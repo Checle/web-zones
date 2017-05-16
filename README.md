@@ -1,15 +1,12 @@
-# operate
+# zone
 
-[![NPM](https://img.shields.io/npm/v/operate.svg?maxAge=2592000&style=flat-square)](https://www.npmjs.com/package/operate)
-[![License](https://img.shields.io/npm/l/operate.svg?style=flat-square)](https://github.com/daluege/operate/blob/master/LICENSE)
-[![Build status](https://img.shields.io/travis/daluege/operate/master.svg?style=flat-square)](https://travis-ci.org/daluege/operate)
-[![GitHub issues](https://img.shields.io/github/issues/daluege/operate.svg?style=flat-square)](https://github.com/daluege/operate/issues)
+[![Build status](https://img.shields.io/travis/checle/zone/master.svg?style=flat-square)](https://travis-ci.org/checle/zone)
 
 ## Installation
 
 Install this package using NPM:
 
-    npm install operate
+    npm install @record/zone
 
 ## Examples
 
@@ -19,7 +16,7 @@ For more on promises, check out this [Google Developers](https://developers.goog
 ### General concept
 
 ```javascript
-const operate = require('operate');
+const exec = require('@record/zone').exec;
 const fs = require('fs');
 
 var fileContent = null;
@@ -36,7 +33,7 @@ function application() {
   setTimeout(readFile, 1000);
 }
 
-operate(application).then(
+exec(application).then(
   function () {
     console.log('This file content has been read: ' + fileContent);
   }
@@ -59,8 +56,8 @@ var sandbox = {
   print: console.log
 };
 
-// Use operate with vm to run a program in an isolated environment
-operate(
+// Use exec with vm to run a program in an isolated environment
+exec(
   function () {
     vm.runInNewContext(applicationCode, sandbox);
   }
@@ -74,7 +71,7 @@ operate(
 ### Terminate a zone from outside
 
 ```javascript
-var zone = operate(application);
+var zone = exec(application);
 
 // Cancel all pending events after 1 minute
 
@@ -90,9 +87,9 @@ setTimeout(function () {
 
 ```javascript
 Promise.all(
-  operate(app1),
-  operate(app2),
-  operate(app3)
+  exec(app1),
+  exec(app2),
+  exec(app3)
 ).then(
   function() { console.log('All tasks have concluded successfully'); }
 ).catch(
@@ -105,7 +102,7 @@ Promise.all(
 ```javascript
 // Run a huge number of untrusted applications in non-blocking mode
 for (var i = 0; i < applications.length; i++) {
-  operate(applications[i], { blocking: false });
+  exec(applications[i], { blocking: false });
 }
 
 function application () {
@@ -123,7 +120,7 @@ function application () {
   }
 }
 
-operate(application, { blocking: false });
+exec(application, { blocking: false });
 ```
 
 ## License

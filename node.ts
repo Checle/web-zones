@@ -1,4 +1,4 @@
-import {zone} from './operate'
+import {Zone} from './index'
 
 declare const process: any
 
@@ -21,7 +21,7 @@ if ('binding' in process) {
       let binding = module[symbol] = function (...args) {
         if (!(this instanceof binding)) {
           // Current call invokes an internal function
-          if (zone.blocking === false && BlockingModules.indexOf(id) !== -1) {
+          if (Zone.current.blocking === false && BlockingModules.indexOf(id) !== -1) {
             let req = args[args.length - 1]
             if (typeof req !== 'function' || req.oncomplete) {
               // Function was called with no request handler so it would be executed synchronously
@@ -40,7 +40,7 @@ if ('binding' in process) {
 
           if (oncomplete) {
             // Current object is a request handler
-            zone.add(func, null, () => cancelled = true)
+            Zone.current.add(func, null, () => cancelled = true)
             object.oncomplete = function (...args) { if (!cancelled) oncomplete.apply(object, args) }
           }
         })

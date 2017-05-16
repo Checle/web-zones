@@ -1,5 +1,5 @@
 import * as test from 'tape'
 
-test('operate', (t) => {
+test('exec', (t) => {
   t.end()
 })

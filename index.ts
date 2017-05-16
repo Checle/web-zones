@@ -1,5 +1,3 @@
-module.exports = exports = operate
-
 const Timers: { set: string, clear: string, once: boolean }[] = [
   { set: 'setImmediate', clear: 'clearImmediate', once: true },
   { set: 'setInterval', clear: 'clearInterval', once: false },
@@ -11,7 +9,7 @@ export interface ZoneOptions {
   callback?: (callback: Function) => any
 }
 
-export default function operate (callback: Function, context: any = {}, options?: Zone): PromiseLike<any> {
+export function exec (callback: Function, context: any = {}, options?: Zone): PromiseLike<any> {
   let zone = new Zone(callback.name, options, context)
   setImmediate(() => zone.run(callback))
   return zone
@@ -23,13 +21,14 @@ export interface Task {
   cancel: () => void
 }
 
-export class Zone implements PromiseLike<any> {
+export class Zone implements PromiseLike<any>, ZoneOptions {
   static current: Zone = null
 
   parent: Zone = null
   value = undefined
   running = false
   tasks = new Set<Task>()
+  blocking: boolean
 
   private types = new Map<any, Map<any, Task>>()
   private promise = new Promise<any>((resolve, reject) => (this.resolve = resolve, this.reject = reject))
@@ -40,7 +39,7 @@ export class Zone implements PromiseLike<any> {
     if (options != null) Object.assign(this, options)
   }
 
-  static operate = operate
+  static exec = exec
 
   callback = (callback: Function) => callback()
 
@@ -163,3 +162,5 @@ Promise.prototype.then = function (resolve, reject): any {
 
   const task = zone.add(Promise, null, () => (cancelled = true))
 }
+
+export default Zone

@@ -1,30 +1,29 @@
 {
-  "name": "operate",
+  "name": "@record/zone",
   "version": "0.5.0",
-  "description": "Zones for JavaScript with Promise support",
+  "description": "Simplistic, promise-based zones",
   "main": "dist/node.js",
   "browser": "dist/browser.js",
   "scripts": {
-    "prepublish": "npm run clean && typings install && npm run build",
-    "postpublish": "npm run deploy",
+    "prepublish": "npm run clean && typings install && npm run build && npm run deploy",
     "test": "ts-node node_modules/tape/bin/tape test.ts && npm run lint",
     "lint": "tslint *.ts",
     "build": "tsc",
-    "dist": "npm run build && webpack dist/operate.js dist/browser.js && babili -s --no-comments --compact true dist/browser.js -o dist/browser.js",
+    "dist": "npm run build && webpack dist/index.js dist/browser.js && babili -s --no-comments --compact true dist/browser.js -o dist/browser.js",
     "clean": "rm -rf dist",
     "deploy": "npm run dist"
   },
-  "typings": "dist/operate.d.ts",
+  "typings": "dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/daluege/operate.git"
+    "url": "git+https://github.com/checle/zone.git"
   },
   "author": "Filip Dalüge <daluege@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/daluege/operate/issues"
+    "url": "https://github.com/checle/zone/issues"
   },
-  "homepage": "https://github.com/daluege/operate",
+  "homepage": "https://github.com/checle/zone",
   "devDependencies": {
     "babili": "0.0.7",
     "gh-pages": "^0.11.0",
