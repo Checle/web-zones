@@ -1,10 +1,10 @@
-# web-zones
+# zones
 
 by Filip Dalüge
 
 [![Build status](https://img.shields.io/travis/checle/zone/master.svg?style=flat-square)](https://travis-ci.org/checle/zone)
 
-For a primer on the idea of zones, take a look at the [Dart article](https://www.dartlang.org/articles/libraries/zones).
+For a primer on zones in Dart, take a look at the [Dart article](https://www.dartlang.org/articles/libraries/zones). Find the complete API [here](#api).
 
 ## Installation
 
@@ -16,9 +16,9 @@ Import zones:
 
 ```javascript
 
-import * as zone from 'web-zones'
+import * as zones from 'web-zones'
 
-Object.assign(global, zone) // Optionally, shim the host API (overrides setTimeout, Promise etc.)
+Object.assign(global, zones) // Optionally, shim the host API (overrides setTimeout, Promise etc.)
 ```
 
 ## Usage
@@ -166,7 +166,7 @@ global.domain = 'example.com'
 
 new MozillaZone().run(() => console.log(global.domain)) // "mozilla.org"
 
-Zone.exec(() => console.log(global.domain)) // "example.com"
+Zone.current.run(() => console.log(global.domain)) // "example.com"
 ```
 
 ### Run untrusted code asynchronously

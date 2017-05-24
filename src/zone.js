@@ -79,10 +79,12 @@ export class Zone extends EventTarget {
 
   static current = new Zone()
 
-  constructor (id = null, options = {}) {
+  constructor (spec = {}) {
     super()
 
-    this.id = id
+    if (typeof spec === 'object') Object.assign(this, spec)
+    else this.id = spec
+
     this[PARENT] = Zone.current
     this[SCHEDULES] = {}
     this[SIZE] = 0
