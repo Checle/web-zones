@@ -10,8 +10,48 @@ Install this package using NPM:
 
 ## Examples
 
-For a primer on zones, review the [Dart](https://www.dartlang.org/articles/libraries/zones) overview.
-For more on promises, check out this [Google Developers](https://developers.google.com/web/fundamentals/getting-started/primers/promises) introduction.
+For a primer on zones, review the [Dart overview](https://www.dartlang.org/articles/libraries/zones).
+For more on promises, check out this [Google Developers introduction](https://developers.google.com/web/fundamentals/getting-started/primers/promises).
+
+## API
+
+```typescript
+interface Task {
+  cancel?: Function
+}
+
+interface Zone implements EventTarget {
+  // Current zone.
+  static current: Zone
+
+  // Custom optional ID.
+  id: any
+
+  // Number of pending tasks.
+  size: number
+
+  constructor (id?: any)
+
+  // Add or modify custom tasks.
+  add (task: Task, type?: string | symbol): number
+  get (id: number | string | symbol, type?: string | symbol): any
+  has (id: number | string | symbol, type?: string | symbol): boolean
+  delete (id: number | string | symbol, type?: string | symbol): boolean
+  cancel (id?: number | string | symbol, type?: string | symbol): void
+
+  // Run function inside zone; promise resolves immediately when microtasks
+  // have been worked off.
+  async run (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
+
+  // Bind function to zone.
+  bind <T extends Function> (fn: T): T
+}
+
+// Run an entry function, resolve the promise when all dependent tasks have
+// finished or reject the promise and cancel pending tasks when an uncatched
+// error is thrown by a task.
+function operate (entry: Function): Function
+```
 
 ### General concept
 

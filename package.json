@@ -1,19 +1,16 @@
 {
-  "name": "@record/zone",
-  "version": "0.5.1",
+  "name": "@checle/zone",
+  "version": "0.6.0",
   "description": "Simplistic, promise-based zones",
   "main": "dist/index.js",
-  "browser": "dist/browser.js",
   "scripts": {
-    "prepublish": "npm run clean && typings install && npm run build && npm run deploy",
-    "test": "ts-node node_modules/tape/bin/tape test.ts && npm run lint",
-    "lint": "tslint *.ts",
-    "build": "tsc",
-    "dist": "npm run build && webpack dist/index.js dist/browser.js && babili -s --no-comments --compact true dist/browser.js -o dist/browser.js",
-    "clean": "rm -rf dist",
-    "deploy": "npm run dist"
+    "prepublish": "npm run dist",
+    "lint": "eslint src/**/*.js",
+    "build": "babel src -D -d dist",
+    "watch": "babel src -Dw -d dist",
+    "dist": "npm run build"
   },
-  "typings": "dist/index.d.ts",
+  "typings": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/checle/zone.git"
@@ -25,14 +22,11 @@
   },
   "homepage": "https://github.com/checle/zone",
   "devDependencies": {
-    "babili": "0.0.7",
-    "gh-pages": "^0.11.0",
-    "tape": "^4.6.0",
-    "ts-node": "^1.3.0",
-    "tslint": "^3.15.1",
-    "tslint-config-standard": "^1.5.0",
-    "typescript": "^2.3.2",
-    "typings": "^1.3.2",
-    "webpack": "^1.13.1"
+    "babel-cli": "^6.24.1",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-preset-node6": "^11.0.0"
+  },
+  "dependencies": {
+    "event-target-shim": "^2.0.0"
   }
 }
