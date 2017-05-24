@@ -64,7 +64,7 @@ class Schedule extends Map {
 }
 
 export class Zone extends EventTarget {
-  static run (entry) {
+  static exec (entry) {
     let zone = new Zone()
     let promise = zone.run(entry)
 

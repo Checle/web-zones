@@ -4,163 +4,228 @@
 
 ## Installation
 
-Install this package using NPM:
+Install using NPM:
 
-    npm install @record/zone
+    npm install @checle/zone
+
+Import the `Zone` constructor:
+
+```javascript
+import {Zone} from '@checle/zone'
+```
+
+Optionally shim the standard API:
+
+```javascript
+import * as zone from '@checle/zone'
+
+Object.assign(global, zone) // Overrides setTimeout, Promise and others
+```
+
+## API
+
+```typescript
+interface Zone implements EventTarget {
+  // Current zone
+  static current: Zone
+
+  // Run an entry function and resolve the result when all dependent tasks have
+  // finished or reject the result and cancel pending tasks when an uncatched
+  // error is thrown by any task
+  static exec (entry: Function): Function
+
+  // Custom optional ID
+  id: any
+
+  // Number of pending tasks
+  size: number
+
+  constructor (id?: any)
+
+  // Add and manage custom tasks
+  add (task: {cancel?: Function}, type?: string | symbol): number
+  get (id: number | string | symbol, type?: string | symbol): any
+  has (id: number | string | symbol, type?: string | symbol): boolean
+  delete (id: number | string | symbol, type?: string | symbol): boolean
+
+  // Cancels a specific task or all tasks when no ID is given
+  cancel (id?: number | string | symbol, type?: string | symbol): void
+
+  // Run function inside zone; promise resolves immediately when microtasks
+  // have been worked off
+  async run (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
+
+  // Bind function to zone
+  bind (fn: Function): Function
+}
+
+// Zone-supporting standard API
+function setTimeout (handler, timeout, ...args)
+function setInterval (handler, timeout, ...args)
+function clearTimeout (id)
+function clearInterval (id)
+function Promise (executor)
+```
 
 ## Examples
 
 For a primer on zones, review the [Dart overview](https://www.dartlang.org/articles/libraries/zones).
 For more on promises, check out this [Google Developers introduction](https://developers.google.com/web/fundamentals/getting-started/primers/promises).
 
-## API
-
-```typescript
-interface Task {
-  cancel?: Function
-}
-
-interface Zone implements EventTarget {
-  // Current zone.
-  static current: Zone
-
-  // Custom optional ID.
-  id: any
-
-  // Number of pending tasks.
-  size: number
-
-  constructor (id?: any)
-
-  // Add or modify custom tasks.
-  add (task: Task, type?: string | symbol): number
-  get (id: number | string | symbol, type?: string | symbol): any
-  has (id: number | string | symbol, type?: string | symbol): boolean
-  delete (id: number | string | symbol, type?: string | symbol): boolean
-  cancel (id?: number | string | symbol, type?: string | symbol): void
-
-  // Run function inside zone; promise resolves immediately when microtasks
-  // have been worked off.
-  async run (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
-
-  // Bind function to zone.
-  bind <T extends Function> (fn: T): T
-}
-
-// Run an entry function, resolve the promise when all dependent tasks have
-// finished or reject the promise and cancel pending tasks when an uncatched
-// error is thrown by a task.
-function operate (entry: Function): Function
-```
-
 ### General concept
 
-```javascript
-const exec = require('@record/zone').exec;
-const fs = require('fs');
+The example creates an tiny asynchronous application that reads a file making use of various JS APIs. The result is then awaited and its content printed.
 
-var fileContent = null;
+```javascript
+import {Zone} from '@checle/zone'
+import * as zone from '@checle/zone'
+import * as fs from 'fs'
+
+// Install hooked functions such as setTimeout on the global object
+Object.assign(global, zone)
 
 // An application that does multiple unknown asynchronous operations
 function application() {
+  // Waits for 1 second to start a request
+  setTimeout(readFile, 1000)
+
   function readFile () {
     // Read file asynchronously
-    fs.readFile('data.txt', function callback (data) {
-      fileContent = data;
-    });
+    fs.readFile('data.txt', data => {
+      global.fileContent = data
+    })
   }
-  // Wait for 1 second and then start a request
-  setTimeout(readFile, 1000);
 }
 
-exec(application).then(
-  function () {
-    console.log('This file content has been read: ' + fileContent);
+try {
+  // Calls application and waits for all spawned tasks to terminate
+  await Zone.exec(application)
+
+  console.log('This file content has been read: ' + global.fileContent)
+} catch (error) {
+  console.log('Either setTimeout or fs.readFile threw an uncatched error')
+}
+```
+
+### Terminate a zone from the outside
+
+Cancels all pending tasks of a zone.
+
+```javascript
+await Zone.exec(application)
+
+// Cancel all pending events after 1 minute
+setTimeout(() => Zone.current.cancel(), 60000)
+
+// If node is stalled due to pending tasks in the operating zone,
+// zone.cancel() will unstall it.
+```
+
+### Instantiate a zone
+
+Creates a zone object and listens for status events.
+
+```javascript
+var zone = new Zone('custom-zone')
+
+zone.addEventListener('finish', () => console.log('Zone has terminated'))
+zone.addEventListener('error', error => console.log('Error occurred'))
+
+zone.run(application)
+```
+
+### Extend zones
+
+Adds custom properties to `Zone.current` using inheritance.
+
+```javascript
+let id = 0
+
+class CustomEnvironment extends Zone {
+  constructor () {
+    super('custom-environment-' + (++id))
+
+    this.created = Date.now()
   }
-).catch(
-  function (error) {
-    console.log('Either setTimeout or fs.readFile threw an uncatched error');
+}
+
+function routine () {
+  if (Zone.current instanceof CustomEnvironment) {
+    console.log('My environment was created at ' + this.created)
+  } else {
+    console.log("I think I've been running forever")
   }
-);
+}
+
+Zone.current.run(routine) // "I think I've been running forever"
+
+new CustomEnvironment().run(routine) // Prints the date
+```
+
+### Bind a function
+
+Binds a function to a zone.
+
+```javascript
+function application () {
+  console.log(Zone.current.id)
+}
+
+let zone = new Zone('cute-zone')
+
+application = zone.bind(application)
+
+application() // "cute-zone"
+```
+
+### Execute tasks parallely
+
+Runs 4 zoned processes using [`Promise.all`](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise/all) and waits for them to finish. Cancels all zones if one zone throws an error.
+
+```javascript
+try {
+  await Promise.all(
+    Zone.exec(app1),
+    Zone.exec(app2),
+    Zone.exec(app3),
+  )
+
+  console.log('All tasks have concluded successfully')
+} catch (error) {
+  console.log('Some task has failed')
+
+  Zone.current.cancel()
+}
 ```
 
 ### Run untrusted code asynchronously
 
-```javascript
-const vm = require('vm');
-
-var sandbox = {
-  setTimeout,
-  setInterval,
-  setImmediate,
-  print: console.log
-};
-
-// Use exec with vm to run a program in an isolated environment
-exec(
-  function () {
-    vm.runInNewContext(applicationCode, sandbox);
-  }
-).then(
-  function () { console.log('Terminated successfully'); }
-).catch(
-  function (error) { console.log('An error occurred'); }
-);
-```
-
-### Terminate a zone from outside
+Runs code in a sandbox using NodeJS' [vm module](https://nodejs.org/api/vm.html) and prints the result.
 
 ```javascript
-var zone = exec(application);
+const vm = require('vm')
 
-// Cancel all pending events after 1 minute
+let sandbox = {print: console.log}
 
-setTimeout(function () {
-  zone.cancel();
-}, 60000);
+// Copies setTimeout, setInterval and Promise polyfills to the sandbox
+Object.assign(sandbox, zone)
 
-// If node is stalling due to pending tasks in the operating zone,
-// zone.cancel() will unstall it.
-```
-
-### Execute zones parallely
-
-```javascript
-Promise.all(
-  exec(app1),
-  exec(app2),
-  exec(app3)
-).then(
-  function() { console.log('All tasks have concluded successfully'); }
-).catch(
-  function() { console.log('An error occurred'); }
-);
-```
-
-### Non-blocking mode
-
-```javascript
-// Run a huge number of untrusted applications in non-blocking mode
-for (var i = 0; i < applications.length; i++) {
-  exec(applications[i], { blocking: false });
-}
-
-function application () {
+let applicationCode = `
   try {
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", "data.txt", false);
+    console.log("I'm not that secure, it seems.")
   } catch (error) {
-    console.log(error); // Error: No permission to execute the synchronous system operation XMLHttpRequest.prototype.open()
+    print('Or maybe I am!')
   }
+`
 
-  try {
-    var xhr = fs.readfileSync('data.txt');
-  } catch (error) {
-    console.log(error); // Error: No permission to execute the synchronous system operation fs.readFileSync()
-  }
-}
+try {
+  // Use exec with vm to run a program in an isolated environment
+  let result = await Zone.exec(() => vm.runInNewContext(applicationCode, sandbox))
 
-exec(application, { blocking: false });
+  console.log('Terminated successfully with result', result)
+} catch (error) {
+  console.log('An error occurred')
+)
 ```
 
 ## License
