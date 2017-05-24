@@ -1,6 +1,6 @@
 import Zone from './zone.js'
 
-let NativePromise = Promise
+let NativePromise = global.Promise
 let clearNativeInterval = global.clearInterval
 let clearNativeTimeout = global.clearTimeout
 let setNativeInterval = global.setInterval
@@ -18,8 +18,14 @@ export function setTimeout (handler, timeout, ...args) {
   let fn = zone.bind(getHandler(handler, ...args))
 
   let task = {
-    id: setNativeTimeout(() => zone.delete(id, 'timer') && fn(), timeout),
-    cancel: () => zone.has(id, 'timer') && clearNativeTimeout(task.id),
+    id: setNativeTimeout(() => {
+      try {
+        return fn()
+      } finally {
+        zone.delete(id, 'timer')
+      }
+    }, timeout),
+    cancel: () => clearNativeTimeout(task.id),
   }
 
   return (id = zone.add(task, 'timer'))
@@ -31,7 +37,7 @@ export function setInterval (handler, timeout, ...args) {
 
   let task = {
     id: setNativeInterval(fn, timeout),
-    cancel: () => zone.has(id, 'timer') && clearNativeInterval(task.id),
+    cancel: () => clearNativeInterval(task.id),
   }
 
   return zone.add(task, 'timer')
@@ -45,6 +51,7 @@ export function clearInterval (id) {
   Zone.current.cancel(id, 'timer')
 }
 
+/*
 export function Promise (executor) {
   if (!new.target) return NativePromise.apply(this, arguments)
 
@@ -54,3 +61,4 @@ export function Promise (executor) {
 }
 
 Object.defineProperties(Promise, Object.getOwnPropertyDescriptors(NativePromise))
+*/

@@ -63,6 +63,10 @@ var zone = new Zone('custom-zone')
 zone.addEventListener('finish', () => console.log('Zone has terminated'))
 zone.addEventListener('error', error => console.log('Error occurred'))
 
+function application () {
+  setTimeout(() => null, 1000)
+}
+
 zone.run(application)
 ```
 
@@ -102,11 +106,11 @@ Run three processes using [`Promise.all`](https://developer.mozilla.org/de/docs/
 
 ```javascript
 try {
-  await Promise.all(
+  await Promise.all([
     Zone.exec(app1),
     Zone.exec(app2),
     Zone.exec(app3),
-  )
+  ])
 
   console.log('All tasks have concluded successfully')
 } catch (error) {
@@ -149,13 +153,13 @@ You can hook into zone operations overriding `run()`.
 
 ```javascript
 class MozillaZone extends Zone {
-  async run (func) {
+  run (func) {
     let previousDomain = global.domain
 
     try {
       global.domain = 'mozilla.org' // Switch global domain during run()
 
-      return await super.run(func)
+      return super.run(func)
     } finally {
       global.domain = previousDomain // Restore global domain
     }
@@ -228,7 +232,7 @@ interface Zone implements EventTarget {
 
   // Run function inside zone; promise resolves immediately when microtasks
   // have been worked off
-  async run (entry: Function, thisArg?: any, ...args: any[]): any
+  run (entry: Function, thisArg?: any, ...args: any[]): any
 
   // Bind function to zone
   bind (fn: Function): Function

@@ -21,7 +21,7 @@ declare module '@checle/zone' {
     has (id: any, type?: string | symbol): boolean
     delete (id: any, type?: string | symbol): boolean
     cancel (id?: any, type?: string | symbol): Promise<void>
-    run <T extends Function> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
+    run <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): T
     bind (fn: Function): Function
   }
 

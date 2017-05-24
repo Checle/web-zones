@@ -1,10 +1,12 @@
 import EventTarget from 'event-target-shim'
 
-const DEFAULT = Symbol('DEFAULT')
+const DEFAULT = ''
 const PARENT = Symbol('PARENT')
 const SCHEDULES = Symbol('SCHEDULES')
+const PREVIOUS = Symbol('PREVIOUS')
 const SIZE = Symbol('SIZE')
 
+let Promise = global.Promise
 let currentCall
 
 function createCustomEvent (type, detail) {
@@ -21,33 +23,28 @@ function callScheduleMethod (zone, name, type, args) {
 class Schedule extends Map {
   length = 0
 
-  add (task) {
-    let id = this.length
-
-    this.set(id, task)
-
-    return id
-  }
-
   set (id, task) {
+    if (this.has(id)) throw new ReferenceError('Task with equal ID exists')
     if (id > this.length - 1) this.length = id + 1
 
-    if (this.has(id)) throw new ReferenceError('Task with equal ID exists')
+    super.set(id, task)
 
-    return super.set(id, task)
+    return this
   }
 
   delete (id) {
-    if (!super.delete(id)) throw new ReferenceError('Task not found')
+    let result = super.delete(id)
 
-    while (!this.has(this.length) && this.length > 0) this.length--
+    while (this.length && !this.has(this.length - 1)) this.length--
+
+    return result
   }
 
   cancel (id = undefined) {
     if (id === undefined) {
       let results = []
 
-      for (let id of Objects.getOwnPropertyNames(this)) {
+      for (let id of this.keys()) {
         results.push(this.cancel(id))
       }
 
@@ -66,14 +63,14 @@ class Schedule extends Map {
 
 export class Zone extends EventTarget {
   static exec (entry) {
-    let zone = new Zone()
+    let zone = new Zone("<exec>")
     let promise = zone.run(entry)
 
     if (!zone.size) return promise
 
     return new Promise((resolve, reject) => {
       zone.addEventListener('finish', () => resolve())
-      zone.addEventListener('error', error => reject(error))
+      zone.addEventListener('error', event => reject(event.detail))
     })
   }
 
@@ -95,7 +92,12 @@ export class Zone extends EventTarget {
   }
 
   add (task, type = DEFAULT) {
-    return callScheduleMethod(this, 'add', type, arguments)
+    let schedules = this[SCHEDULES]
+    let id = schedules.hasOwnProperty(type) ? schedules[type].length : 0
+
+    this.set(id, task, type)
+
+    return id
   }
 
   set (id, task, type = DEFAULT) {
@@ -139,10 +141,12 @@ export class Zone extends EventTarget {
       let schedules = this[SCHEDULES]
 
       if (id === undefined) {
-        let types = Object.getOwnPropertyNames(this)
+        let types = Object.getOwnPropertyNames(schedules)
         let results = []
 
-        for (let type of types) results.push(schedules[type].cancel())
+        for (let type of types) {
+          results.push(schedules[type].cancel())
+        }
 
         await Promise.all(results)
       } else {
@@ -155,35 +159,29 @@ export class Zone extends EventTarget {
     }
   }
 
-  async run (entry, thisArg = null, ...args) {
-    if (arguments.length > 1) return this.run(() => entry.apply(thisArg, args))
-
-    let lastZone = Zone.current
-    let call = Symbol()
-    let lastCall = currentCall
-
-    Zone.current = this
-    currentCall = call
+  run (entry, thisArg = null, ...args) {
+    let call, lastZone, lastCall
+    let enter = () => (lastZone = Zone.current, Zone.current = this, lastCall = currentCall, call = {})
+    let leave = () => (Zone.current = lastZone, currentCall = lastCall)
 
     try {
-      return entry()
+      enter()
+      Promise.resolve().then(() => enter)
+
+      return entry.apply(this, args)
+    } catch (error) {
+      this.dispatchEvent(createCustomEvent('error', error))
     } finally {
-      await Promise.resolve()
-
-      if (currentCall !== call) {
-        throw new ReferenceError('Unexpected interleaved task')
-      }
-
-      Zone.current = lastZone
-      currentCall = lastCall
+      leave()
+      Promise.resolve().then(() => leave)
     }
   }
 
   bind (fn) {
     let zone = this
 
-    return function () {
-      return zone.run(() => fn.apply(this, arguments))
+    return function bound () {
+      return zone.run(fn, this, ...arguments)
     }
   }
 }
