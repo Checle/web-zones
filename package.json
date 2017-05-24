@@ -1,5 +1,5 @@
 {
-  "name": "@checle/zone",
+  "name": "@checle/zones",
   "version": "0.6.0",
   "description": "Simplistic, promise-based zones",
   "main": "dist/index.js",
@@ -13,14 +13,14 @@
   "typings": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/checle/zone.git"
+    "url": "git+https://github.com/checle/zones.git"
   },
   "author": "Filip Dalüge <daluege@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/checle/zone/issues"
+    "url": "https://github.com/checle/zones/issues"
   },
-  "homepage": "https://github.com/checle/zone",
+  "homepage": "https://github.com/checle/zones",
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
