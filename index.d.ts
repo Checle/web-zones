@@ -11,15 +11,16 @@ declare module '@checle/zone' {
     static exec <T> (entry: (...args) => T): Promise<T>
 
     id: any
-    size: number
+    readonly size: number
 
     constructor (id?: any, options?: ZoneOptions)
 
     add (task: Task, type?: string | symbol): number
-    get (id: number | string | symbol, type?: string | symbol): any
-    has (id: number | string | symbol, type?: string | symbol): boolean
-    delete (id: number | string | symbol, type?: string | symbol): boolean
-    cancel (id?: number | string | symbol, type?: string | symbol): void
+    set (id: any, task: Task, type?: string | symbol): this
+    get (id: any, type?: string | symbol): Task
+    has (id: any, type?: string | symbol): boolean
+    delete (id: any, type?: string | symbol): boolean
+    cancel (id?: any, type?: string | symbol): Promise<void>
     run <T extends Function> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
     bind (fn: Function): Function
   }

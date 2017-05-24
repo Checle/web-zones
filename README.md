@@ -38,25 +38,32 @@ interface Zone implements EventTarget {
   id: any
 
   // Number of pending tasks
-  size: number
+  readonly size: number
 
   constructor (id?: any)
 
   // Add and manage custom tasks
   add (task: {cancel?: Function}, type?: string | symbol): number
-  get (id: number | string | symbol, type?: string | symbol): any
-  has (id: number | string | symbol, type?: string | symbol): boolean
-  delete (id: number | string | symbol, type?: string | symbol): boolean
+  set (id: any, task: {cancel?: Function}, type?: string | symbol): this
+  get (id: any, type?: string | symbol): any
+  has (id: any, type?: string | symbol): boolean
+  delete (id: any, type?: string | symbol): boolean
 
-  // Cancels a specific task or all tasks when no ID is given
-  cancel (id?: number | string | symbol, type?: string | symbol): void
+  // Cancels a task
+  async cancel (id?: any, type?: string | symbol): void
+
+  // Cancels all tasks
+  async cancel (): void
 
   // Run function inside zone; promise resolves immediately when microtasks
   // have been worked off
-  async run (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
+  async run (entry: Function, thisArg?: any, ...args: any[]): any
 
   // Bind function to zone
   bind (fn: Function): Function
+
+  // Add event listeners
+  addEventListener(type: 'finish' | 'error', listener: Function, options: any): void
 }
 
 // Zone-supporting standard API
@@ -109,7 +116,7 @@ try {
 
 ### Terminate a zone from the outside
 
-Cancels all pending tasks of a zone.
+Cancels all pending tasks of a zone after a minute.
 
 ```javascript
 await Zone.exec(application)
@@ -121,7 +128,7 @@ setTimeout(() => Zone.current.cancel(), 60000)
 // zone.cancel() will unstall it.
 ```
 
-### Instantiate a zone
+### Instantiate a zone and listen for events
 
 Creates a zone object and listens for status events.
 

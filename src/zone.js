@@ -1,6 +1,7 @@
 import EventTarget from 'event-target-shim'
 
 const DEFAULT = Symbol('DEFAULT')
+const PARENT = Symbol('PARENT')
 const SCHEDULES = Symbol('SCHEDULES')
 const SIZE = Symbol('SIZE')
 
@@ -82,6 +83,7 @@ export class Zone extends EventTarget {
     super()
 
     this.id = id
+    this[PARENT] = Zone.current
     this[SCHEDULES] = {}
     this[SIZE] = 0
   }
@@ -96,6 +98,11 @@ export class Zone extends EventTarget {
 
   set (id, task, type = DEFAULT) {
     callScheduleMethod(this, 'set', type, arguments)
+
+    // Register zone as a parent task when first task is started
+    if (this[SIZE] === 0 && this[PARENT]) {
+      this[PARENT].set(this, this)
+    }
 
     this[SIZE]++
 
@@ -116,6 +123,9 @@ export class Zone extends EventTarget {
     this[SIZE]--
 
     if (this[SIZE] === 0) {
+      // Unregister parent task when the zone has finished
+      if (this[PARENT]) this[PARENT].delete(this)
+
       this.dispatchEvent(createCustomEvent('finish'))
     }
 
