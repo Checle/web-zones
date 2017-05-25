@@ -1,8 +1,10 @@
 {
   "name": "@checle/zones",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Simplistic, promise-based zones",
-  "main": "dist/index.js",
+  "main": "dist/main.js",
+  "browser": "dist/browser.js",
+  "typings": "api.d.ts",
   "scripts": {
     "prepublish": "npm run dist",
     "lint": "eslint src/**/*.js",
@@ -10,7 +12,6 @@
     "watch": "babel src -Dw -d dist",
     "dist": "npm run build"
   },
-  "typings": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/checle/zones.git"
@@ -22,9 +23,18 @@
   },
   "homepage": "https://github.com/checle/zones",
   "devDependencies": {
+    "@types/core-js": "^0.9.41",
     "babel-cli": "^6.24.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
-    "babel-preset-node6": "^11.0.0"
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-es2015-rollup": "^3.0.0",
+    "babel-preset-es2016": "^6.24.1",
+    "babel-preset-es2017": "^6.24.1",
+    "babel-preset-node6": "^11.0.0",
+    "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-commonjs": "^8.0.2",
+    "rollup-plugin-node-globals": "^1.1.0",
+    "rollup-plugin-node-resolve": "^3.0.0"
   },
   "dependencies": {
     "event-target-shim": "^2.0.0"

@@ -1,31 +1,39 @@
-import EventTarget from 'event-target-shim'
+import {CustomEvent, DOMException, Node} from './dom.js'
 
-const DEFAULT = ''
-const PARENT = Symbol('PARENT')
-const SCHEDULES = Symbol('SCHEDULES')
-const PREVIOUS = Symbol('PREVIOUS')
-const SIZE = Symbol('SIZE')
+const LENGTH = Symbol('LENGTH')
 
 let Promise = global.Promise
-let currentCall
+let setTimeout = global.setTimeout
 
-function createCustomEvent (type, detail) {
-  return typeof CustomEvent === 'undefined' ? {type, detail} : new CustomEvent(type, detail)
+function dispatchEvent (zone, type, init = {}) {
+  let event = new CustomEvent(type, init)
+  let handler = zone['on' + type]
+
+  zone.dispatchEvent(event)
+
+  if (typeof handler === 'function') handler.call(zone, event)
+
+  return !event.defaultPrevented
 }
 
-function callScheduleMethod (zone, name, type, args) {
-  let schedules = zone[SCHEDULES]
-  let schedule = schedules.hasOwnProperty(type) ? schedules[type] : (schedules[type] = new Schedule())
-
-  return schedule[name](...args)
+function defineProperty (object, name, value, writable = false, configurable = true) {
+  Object.defineProperty(object, name, {value, writable, configurable})
 }
 
-class Schedule extends Map {
-  length = 0
+class TaskMap extends Map {
+  constructor () {
+    super()
+
+    this[LENGTH] = 0
+  }
+
+  get length () {
+    return this[LENGTH]
+  }
 
   set (id, task) {
     if (this.has(id)) throw new ReferenceError('Task with equal ID exists')
-    if (id > this.length - 1) this.length = id + 1
+    if (id > this[LENGTH] - 1) this[LENGTH] = id + 1
 
     super.set(id, task)
 
@@ -35,146 +43,103 @@ class Schedule extends Map {
   delete (id) {
     let result = super.delete(id)
 
-    while (this.length && !this.has(this.length - 1)) this.length--
+    while (this[LENGTH] && !this.has(this[LENGTH] - 1)) this[LENGTH]--
 
     return result
   }
-
-  cancel (id = undefined) {
-    if (id === undefined) {
-      let results = []
-
-      for (let id of this.keys()) {
-        results.push(this.cancel(id))
-      }
-
-      return Promise.all(results)
-    } else {
-      let task = this.get(id)
-
-      this.delete(id)
-
-      if (task != null && typeof task.cancel === 'function') {
-        return task.cancel()
-      }
-    }
-  }
 }
 
-export class Zone extends EventTarget {
-  static exec (entry) {
-    let zone = new Zone("<exec>")
-    let promise = zone.run(entry)
-
-    if (!zone.size) return promise
-
-    return new Promise((resolve, reject) => {
-      zone.addEventListener('finish', () => resolve())
-      zone.addEventListener('error', event => reject(event.detail))
-    })
-  }
-
-  static current = new Zone()
-
+export class Zone extends Node {
   constructor (spec = {}) {
     super()
 
     if (typeof spec === 'object') Object.assign(this, spec)
-    else this.id = spec
+    else this.name = spec
 
-    this[PARENT] = Zone.current
-    this[SCHEDULES] = {}
-    this[SIZE] = 0
+    defineProperty(this, 'tasks', new TaskMap())
   }
 
-  get size () {
-    return this[SIZE]
+  get nodeName () {
+    return this.name == null ? '#zone' : String(this.name)
   }
 
-  add (task, type = DEFAULT) {
-    let schedules = this[SCHEDULES]
-    let id = schedules.hasOwnProperty(type) ? schedules[type].length : 0
+  get children () {
+    return this.childNodes
+  }
 
-    this.set(id, task, type)
+  append (...nodes) {
+    for (let node of nodes) this.appendChild(node)
+  }
+
+  get root () {
+    return this.parentNode instanceof Zone ? this.parentNode.root : this
+  }
+
+  insertBefore (node, child) {
+    if (!(node instanceof Zone)) throw new DOMException('Child is not a zone', 'TypeError')
+
+    return super.insertBefore(node, child)
+  }
+
+  appendChild (node) {
+    return this.insertBefore(node, null)
+  }
+
+  addTask (task) {
+    let tasks = this.tasks
+    let id = tasks[LENGTH]
+
+    this.setTask(id, task)
 
     return id
   }
 
-  set (id, task, type = DEFAULT) {
-    callScheduleMethod(this, 'set', type, arguments)
-
-    // Register zone as a parent task when first task is started
-    if (this[SIZE] === 0 && this[PARENT]) {
-      this[PARENT].set(this, this)
-    }
-
-    this[SIZE]++
+  setTask (id, task) {
+    this.tasks.set(id, task)
 
     return this
   }
 
-  get (id, type = DEFAULT) {
-    return callScheduleMethod(this, 'get', type, arguments)
+  getTask (id) {
+    return this.tasks.get(id)
   }
 
-  has (id, type = DEFAULT) {
-    return callScheduleMethod(this, 'has', type, arguments)
+  hasTask (id) {
+    return this.tasks.has(id)
   }
 
-  delete (id, type = DEFAULT) {
-    callScheduleMethod(this, 'delete', type, arguments)
+  removeTask (id) {
+    if (!this.tasks.delete(id)) return
 
-    this[SIZE]--
-
-    if (this[SIZE] === 0) {
-      // Unregister parent task when the zone has finished
-      if (this[PARENT]) this[PARENT].delete(this)
-
-      this.dispatchEvent(createCustomEvent('finish'))
+    if (this.tasks.size === 0) {
+      dispatchEvent(this, 'finish')
     }
 
     return true
   }
 
-  async cancel (id = undefined, type = DEFAULT) {
-    try {
-      let schedules = this[SCHEDULES]
+  cancelTask (id) {
+    let task = this.tasks.get(id)
 
-      if (id === undefined) {
-        let types = Object.getOwnPropertyNames(schedules)
-        let results = []
+    this.tasks.delete(id)
 
-        for (let type of types) {
-          results.push(schedules[type].cancel())
-        }
-
-        await Promise.all(results)
-      } else {
-        let schedule = schedules.hasOwnProperty(type) ? schedules[type] : (schedules[type] = new Schedule())
-
-        return schedule.cancel(id)
-      }
-    } catch (error) {
-      this.dispatchEvent(createCustomEvent('error', error))
+    if (task != null && typeof task.cancel === 'function') {
+      return task.cancel()
     }
   }
 
-  run (entry, thisArg = null, ...args) {
-    let call, lastZone, lastCall
-    let enter = () => (lastZone = Zone.current, Zone.current = this, lastCall = currentCall, call = {})
-    let leave = () => (Zone.current = lastZone, currentCall = lastCall)
+  cancel () {
+    let results = []
 
-    try {
-      enter()
-      Promise.resolve().then(() => enter)
-
-      return entry.apply(this, args)
-    } catch (error) {
-      this.dispatchEvent(createCustomEvent('error', error))
-    } finally {
-      leave()
-      Promise.resolve().then(() => leave)
+    for (let child of this.children) {
+      results.push(child.cancel())
     }
+
+    for (let id of this.tasks.keys()) {
+      results.push(this.cancelTask(id))
+    }
+
+    return Promise.all(results)
   }
 
   bind (fn) {
@@ -184,6 +149,50 @@ export class Zone extends EventTarget {
       return zone.run(fn, this, ...arguments)
     }
   }
+
+  run (entry, thisArg = undefined, ...args) {
+    let lastZone
+    let enter = () => (lastZone = zone, zone = this)
+    let exit = () => (zone = lastZone)
+
+    try {
+      enter()
+      Promise.resolve().then(enter)
+
+      return entry.apply(this, args)
+    } catch (error) {
+      if (dispatchEvent(this, 'error', {detail: error, bubbles: true})) {
+        console.error(error)
+      }
+    } finally {
+      exit()
+      Promise.resolve().then(exit)
+    }
+  }
+
+  exec (entry, thisArg = undefined, ...args) {
+    return new Promise((resolve, reject) => {
+      let child = zone.appendChild(new Zone(entry.name))
+      let promise = child.run(...arguments)
+
+      if (!child.tasks.size) return resolve(promise)
+
+      child.onfinish = () => resolve()
+      child.onerror = event => (event.preventDefault(), reject(event.detail))
+    })
+  }
 }
 
+Object.assign(Zone.prototype, {
+  onfinish: null
+})
+
 export default Zone
+
+let zone = new Zone()
+
+Object.defineProperty(typeof global === 'undefined' ? self : global, 'zone', {
+  get () {
+    return zone
+  }
+})

@@ -23,25 +23,25 @@ Object.assign(global, zones) // Optionally, shim the host API (overrides setTime
 
 ## Usage
 
-Wait for operations
+Wait for operations spawned by a function
 ```javascript
-await Zone.exec(applicationFunction)
+await zone.exec(initAppFunction)
 ```
 Listen to state
 ```javascript
-Zone.current.addEventListener('error', listener)
+zone.addEventListener('error', listener)
 ```
 Cancel pending operations
 ```javascript
-Zone.current.cancel()
+zone.cancel()
 ```
 Bind function
 ```javascript
-func = Zone.current.bind(func)
+func = zone.bind(func)
 ```
 Number of scheduled tasks
 ```javascript
-Zone.current.size
+zone.tasks.size
 ```
 
 ## Examples
@@ -92,7 +92,7 @@ function application() {
 
 try {
   // Call and wait for spawned tasks to terminate
-  await Zone.exec(application)
+  await global.zone.exec(application)
 
   console.log('This file content has been read: ' + global.fileContent)
 } catch (error) {
@@ -107,17 +107,17 @@ Run three processes using [`Promise.all`](https://developer.mozilla.org/de/docs/
 ```javascript
 try {
   await Promise.all([
-    Zone.exec(app1),
-    Zone.exec(app2),
-    Zone.exec(app3),
+    zone.exec(app1),
+    zone.exec(app2),
+    zone.exec(app3),
   ])
 
   console.log('All tasks have concluded successfully')
 } catch (error) {
-  console.log('One zone errored')
+  console.log('One zone errored:', error.zone.name)
 
   // Cancel all remaining zones
-  Zone.current.cancel()
+  zone.cancel()
 }
 ```
 
@@ -142,7 +142,7 @@ function routine () {
   }
 }
 
-Zone.current.run(routine) // "I think I've been running forever"
+global.zone.run(routine) // "I think I've been running forever"
 
 new CustomEnvironment().run(routine) // Prints the creation date
 ```
@@ -170,7 +170,7 @@ global.domain = 'example.com'
 
 new MozillaZone().run(() => console.log(global.domain)) // "mozilla.org"
 
-Zone.current.run(() => console.log(global.domain)) // "example.com"
+global.zone.run(() => console.log(global.domain)) // "example.com"
 ```
 
 ### Run untrusted code asynchronously
@@ -180,11 +180,13 @@ Run code in a sandbox using NodeJS' [vm module](https://nodejs.org/api/vm.html) 
 ```javascript
 const vm = require('vm')
 
-// Create a sandbox global object
-let sandbox = {print: console.log}
-
-// Copies setTimeout, setInterval and Promise polyfills to the sandbox
-Object.assign(sandbox, zone)
+// Create sandbox
+let sandbox = {
+  setTimeout,
+  setInterval,
+  setImmediate,
+  print: console.log
+}
 
 let applicationCode = `
   if (typeof console !== 'undefined') {
@@ -196,7 +198,7 @@ let applicationCode = `
 
 try {
   // Use exec with vm to run a program in an isolated environment
-  let result = await Zone.exec(() => vm.runInNewContext(applicationCode, sandbox))
+  let result = await zone.exec(() => vm.runInNewContext(applicationCode, sandbox))
 
   console.log('Terminated successfully with result', result)
 } catch (error) {
@@ -207,41 +209,42 @@ try {
 ## API
 
 ```typescript
-interface Zone implements EventTarget {
-  static current: Zone // Current zone
+zone: Zone // Gets the current zone
 
-  // Run an entry function and resolve the result when all dependent tasks have
-  // finished or reject the result and cancel pending tasks when an uncatched
-  // error is thrown by any task
-  static exec (entry: Function): Function
-
-  readonly id: any // Optional ID
-  readonly size: number // Number of pending tasks
-
-  constructor (id?: any, spec?: any)
-
-  // Add and manage custom tasks
-  add (task: {cancel?: Function}, type?: string | symbol): number
-  set (id: any, task: {cancel?: Function}, type?: string | symbol): this
-  get (id: any, type?: string | symbol): any
-  has (id: any, type?: string | symbol): boolean
-  delete (id: any, type?: string | symbol): boolean
-
-  async cancel (id?: any, type?: string | symbol): void // Cancel a task
-  async cancel (): void // Cancel all in current and child zones
-
-  // Run function inside zone; promise resolves immediately when microtasks
-  // have been worked off
-  run (entry: Function, thisArg?: any, ...args: any[]): any
-
-  // Bind function to zone
-  bind (fn: Function): Function
-
-  // Add event listeners
-  addEventListener(type: 'finish' | 'error', listener: Function, options: any): void
+interface Task extends Event {
+  cancel?: Function
 }
 
-// Zone-supporting standard API
+interface Zone extends EventTarget, Node {
+  name: string
+  root: Zone
+  onerror?: Function
+  onfinish?: Function
+
+  readonly tasks: Map<any, Task>
+  readonly children: Zone[]
+  readonly root: Zone
+
+  constructor (nameOrSpec?: any)
+
+  addTask (task: Task): number
+  setTask (id: any, task: Task): this
+  getTask (id: any): Task
+  hasTask (id: any): boolean
+  removeTask (id: any): boolean
+  cancelTask (id: any): Promise<void>
+
+  run (entry: Function, thisArg?: any, ...args: any[]): any
+  bind (fn: Function): Function
+  // Cancels all tasks and child zones by default
+  cancel (): Promise<void> 
+  // Spawns a new child zone, runs `entry` in it and resolves when all new tasks have been worked off
+  exec (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
+
+  addEventListener (type: 'finish' | 'error', listener: Function, options: any): void
+  appendChild (node: Zone): this
+}
+
 function setTimeout (handler, timeout, ...args)
 function setInterval (handler, timeout, ...args)
 function clearTimeout (id)
