@@ -32,7 +32,7 @@ interface Zone extends EventTarget, Node {
   removeTask (id: any): boolean
   cancelTask (id: any): Promise<void>
 
-  run <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): T
+  run <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
   exec <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
   bind (fn: Function): Function
   cancel (): Promise<void>

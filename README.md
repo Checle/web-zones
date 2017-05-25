@@ -240,7 +240,7 @@ interface Zone extends Node {
   cancelTask (id: any): Promise<void>
 
   // Run function inside zone
-  run (entry: Function, thisArg?: any, ...args: any[]): any
+  run (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
   // Bind function to zone
   bind (fn: Function): Function
   // Cancels all child zones and pending tasks

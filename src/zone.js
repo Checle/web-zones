@@ -1,5 +1,6 @@
 import {CustomEvent, DOMException, Node} from './dom.js'
 
+const CURRENT = Symbol('CURRENT')
 const LENGTH = Symbol('LENGTH')
 
 let Promise = global.Promise
@@ -150,36 +151,44 @@ export class Zone extends Node {
     }
   }
 
-  run (entry, thisArg = undefined, ...args) {
-    let lastZone
+  async run (entry, thisArg = undefined, ...args) {
+    if (this[CURRENT]) await this[CURRENT]
 
-    let enter = () => {
-      lastZone = global.zone
+    let result
 
-      if (typeof this.onenter === 'function') this.onenter()
+    this[CURRENT] = new Promise (resolve => {
+      let lastZone
+      let result
 
-      global.zone = this
-    }
+      let enter = () => {
+        lastZone = global.zone
 
-    let leave = () => {
-      global.zone = lastZone
+        if (typeof this.onenter === 'function') this.onenter()
 
-      if (typeof this.onleave === 'function') this.onleave()
-    }
-
-    try {
-      enter()
-      Promise.resolve().then(enter)
-
-      return entry.apply(this, args)
-    } catch (error) {
-      if (dispatchEvent(this, 'error', {detail: error, bubbles: true})) {
-        console.error(error)
+        global.zone = this
       }
-    } finally {
-      leave()
-      Promise.resolve().then(leave)
-    }
+
+      let leave = () => {
+        global.zone = lastZone
+
+        if (typeof this.onleave === 'function') this.onleave()
+
+        resolve(result)
+      }
+
+      try {
+        enter()
+        setTimeout(leave, 0)
+
+        result = entry.apply(this, args)
+      } catch (error) {
+        if (dispatchEvent(this, 'error', {detail: error, bubbles: true})) {
+          console.error(error)
+        }
+      }
+    })
+
+    return result
   }
 
   exec (entry, thisArg = undefined, ...args) {
