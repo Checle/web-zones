@@ -1,6 +1,6 @@
 {
-  "name": "@checle/zones",
-  "version": "0.7.1",
+  "name": "web-zones",
+  "version": "0.7.2",
   "description": "Simplistic, promise-based zones",
   "main": "dist/main.js",
   "browser": "dist/browser.js",
@@ -15,14 +15,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/checle/zones.git"
+    "url": "git+https://github.com/checle/web-zones.git"
   },
   "author": "Filip Dalüge <daluege@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/checle/zones/issues"
+    "url": "https://github.com/checle/web-zones/issues"
   },
-  "homepage": "https://github.com/checle/zones",
+  "homepage": "https://github.com/checle/web-zones",
   "devDependencies": {
     "@types/core-js": "^0.9.41",
     "babel-cli": "^6.24.1",

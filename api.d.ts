@@ -16,7 +16,7 @@ interface Zone extends EventTarget, Node {
   onerror?: Function
   onfinish?: Function
   onenter?: Function
-  onexit?: Function
+  onleave?: Function
 
   readonly name: string
   readonly tasks: Map<any, Task>

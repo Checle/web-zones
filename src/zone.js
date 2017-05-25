@@ -161,10 +161,10 @@ export class Zone extends Node {
       global.zone = this
     }
 
-    let exit = () => {
+    let leave = () => {
       global.zone = lastZone
 
-      if (typeof this.onexit === 'function') this.onexit()
+      if (typeof this.onleave === 'function') this.onleave()
     }
 
     try {

@@ -1,8 +1,8 @@
-# zones
+# web-zones
 
 by Filip Dalüge
 
-[![Build status](https://img.shields.io/travis/checle/zone/master.svg?style=flat-square)](https://travis-ci.org/checle/zone)
+[![Build status](https://img.shields.io/travis/checle/web-zones/master.svg?style=flat-square)](https://travis-ci.org/checle/web-zones)
 
 For a primer on zones in Dart, take a look at the [Dart article](https://www.dartlang.org/articles/libraries/zones). Find the complete API [here](#api).
 
@@ -41,7 +41,11 @@ func = zone.bind(func)
 ```
 Activity state
 ```javascript
-state = zone.tasks.size > 0 ? 'active' : 'inactive'
+zone.tasks.size > 0 ? 'active' : 'inactive'
+```
+Terminate script
+```javascript
+zone.root.cancel()
 ```
 
 ## Examples
@@ -149,7 +153,7 @@ new CustomEnvironment().run(routine) // Prints the creation date
 
 ### Execution contexts
 
-You can hook into `run` operations by setting `onenter` and `onexit` handlers. You might also override `zone.run()`, however, this would loose the context on `async` functions.
+You can hook into `run` operations by setting `onenter` and `onleave` handlers. You might also override `zone.run()`, however, this would loose the context on `async` functions.
 
 ```javascript
 class MozillaZone extends Zone {
@@ -158,7 +162,7 @@ class MozillaZone extends Zone {
     global.domain = 'mozilla.org'
   }
 
-  onexit () {
+  onleave () {
     global.domain = zone.currentGlobalDomain
     delete zone.currentGlobalDomain
   }
@@ -209,15 +213,16 @@ try {
 ```typescript
 zone: Zone // Get the current zone
 
-interface Task extends Event {
+interface Task {
+  type?: string
   cancel?: Function
 }
 
-interface Zone extends EventTarget, Node {
+interface Zone extends Node {
   onerror?: Function // Error event, invoked on each error, bubbles upwards
   onfinish?: Function // Finish event, invoked each time the task list becomes empty
   onenter?: Function // Enter context
-  onexit?: Function // Exit context
+  onleave?: Function // Leave context
 
   readonly name: any // Optional name, e.g., for debugging
   readonly tasks: Map<any, Task> // Pending tasks
