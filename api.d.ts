@@ -13,10 +13,12 @@ interface Task extends Event {
 }
 
 interface Zone extends EventTarget, Node {
-  readonly name: string
   onerror?: Function
   onfinish?: Function
+  onenter?: Function
+  onexit?: Function
 
+  readonly name: string
   readonly tasks: Map<any, Task>
   readonly children: Zone[]
   readonly root: Zone
@@ -34,6 +36,7 @@ interface Zone extends EventTarget, Node {
   exec <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
   bind (fn: Function): Function
   cancel (): Promise<void>
+  spawn (nameOrSpec?: any): Zone
 }
 
 declare module '@checle/zone' {

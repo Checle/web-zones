@@ -214,10 +214,10 @@ interface Task extends Event {
 }
 
 interface Zone extends EventTarget, Node {
-  onerror?: Function // Set 'error' event handler
-  onfinish?: Function // Set 'finish' event handler
-  onenter?: Function // Enter handler
-  onexit?: Function // Exit handler
+  onerror?: Function // Error event, invoked on each error, bubbles upwards
+  onfinish?: Function // Finish event, invoked each time the task list becomes empty
+  onenter?: Function // Enter context
+  onexit?: Function // Exit context
 
   readonly name: any // Optional name, e.g., for debugging
   readonly tasks: Map<any, Task> // Pending tasks
@@ -242,6 +242,8 @@ interface Zone extends EventTarget, Node {
   cancel (): Promise<void> 
   // Spawns a new child zone, runs `entry` in it and resolves when all new tasks have been worked off
   exec (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
+  // Shortcut to create and append a new child zone
+  spawn (nameOrSpec?: any): Zone
 
   // Add event listeners
   addEventListener (type: 'finish' | 'error', listener: Function, options: any): void

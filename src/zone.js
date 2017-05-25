@@ -50,7 +50,7 @@ class TaskMap extends Map {
 }
 
 export class Zone extends Node {
-  constructor (spec = {}) {
+  constructor (nameOrSpec = null) {
     super()
 
     if (typeof spec === 'object') Object.assign(this, spec)
@@ -184,7 +184,7 @@ export class Zone extends Node {
 
   exec (entry, thisArg = undefined, ...args) {
     return new Promise((resolve, reject) => {
-      let child = this.appendChild(new Zone(entry.name))
+      let child = this.spawn(entry.name)
       let promise = child.run(...arguments)
 
       if (!child.tasks.size) return resolve(promise)
@@ -192,6 +192,10 @@ export class Zone extends Node {
       child.onfinish = () => resolve()
       child.onerror = event => (event.preventDefault(), reject(event.detail))
     })
+  }
+
+  spawn (nameOrSpec = null) {
+    return this.appendChild(new Zone(nameOrSpec))
   }
 }
 
