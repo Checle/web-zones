@@ -177,8 +177,8 @@ export class Zone extends Node {
         console.error(error)
       }
     } finally {
-      exit()
-      Promise.resolve().then(exit)
+      leave()
+      Promise.resolve().then(leave)
     }
   }
 

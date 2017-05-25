@@ -55,7 +55,6 @@ export function clearTimeout (id) {
 
 export var clearInterval = clearTimeout
 
-/*
 export function Promise (executor) {
   if (!new.target) return NativePromise.apply(this, arguments)
 
@@ -63,4 +62,3 @@ export function Promise (executor) {
 }
 
 Object.defineProperties(Promise, Object.getOwnPropertyDescriptors(NativePromise))
-*/
