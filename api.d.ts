@@ -34,7 +34,7 @@ interface Zone extends EventTarget, Node {
 
   run <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
   exec <T> (entry: (...args) => T, thisArg?: any, ...args: any[]): Promise<T>
-  bind (fn: Function): Function
+  bind <T> (fn: (...args) => T): (...args) => Promise<T>
   cancel (): Promise<void>
   spawn (nameOrSpec?: any): Zone
 }

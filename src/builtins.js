@@ -58,7 +58,15 @@ export var clearInterval = clearTimeout
 export function Promise (executor) {
   if (!new.target) return NativePromise.apply(this, arguments)
 
-  return new NativePromise((resolve, reject) => executor(zone.bind(resolve), zone.bind(reject)))
+  if (new.target !== Promise) throw 'Not implemented'
+
+  let zone = global.zone
+
+  return new NativePromise((resolve, reject) => executor(value => zone.run(resolve, null, value), reason => zone.run(reject, null, reason)))
 }
 
+Promise.shim = true
+
 Object.defineProperties(Promise, Object.getOwnPropertyDescriptors(NativePromise))
+
+Object.assign(global, {setTimeout, setInterval, clearTimeout, clearInterval, Promise})

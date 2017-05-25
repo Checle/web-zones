@@ -1,10 +1,10 @@
 import {CustomEvent, DOMException, Node} from './dom.js'
 
-const CURRENT = Symbol('CURRENT')
 const LENGTH = Symbol('LENGTH')
 
 let Promise = global.Promise
 let setTimeout = global.setTimeout
+let currentOperation
 
 function dispatchEvent (zone, type, init = {}) {
   let event = new CustomEvent(type, init)
@@ -146,17 +146,25 @@ export class Zone extends Node {
   bind (fn) {
     let zone = this
 
-    return function bound () {
+    function bound () {
       return zone.run(fn, this, ...arguments)
     }
+
+    Object.defineProperty(bound, 'name', {value: 'bound ' + fn.name})
+
+    return bound
   }
 
   async run (entry, thisArg = undefined, ...args) {
-    if (this[CURRENT]) await this[CURRENT]
+    try {
+      if (global.zone === this) return entry.apply(this, args)
 
-    let result
+      if (currentOperation) await currentOperation
 
-    this[CURRENT] = new Promise (resolve => {
+      let resolve
+
+      currentOperation = new Promise (r => (resolve = r))
+
       let lastZone
       let result
 
@@ -176,19 +184,15 @@ export class Zone extends Node {
         resolve(result)
       }
 
-      try {
-        enter()
-        setTimeout(leave, 0)
+      enter()
+      setTimeout(leave, 0)
 
-        result = entry.apply(this, args)
-      } catch (error) {
-        if (dispatchEvent(this, 'error', {detail: error, bubbles: true})) {
-          console.error(error)
-        }
+      return entry.apply(this, args)
+    } catch (error) {
+      if (dispatchEvent(this, 'error', {detail: error, bubbles: true})) {
+        console.error(error)
       }
-    })
-
-    return result
+    }
   }
 
   exec (entry, thisArg = undefined, ...args) {
