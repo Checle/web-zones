@@ -39,9 +39,9 @@ Bind function
 ```javascript
 func = zone.bind(func)
 ```
-Number of scheduled tasks
+Activity state
 ```javascript
-zone.tasks.size
+state = zone.tasks.size > 0 ? 'active' : 'inactive'
 ```
 
 ## Examples
@@ -50,7 +50,7 @@ zone.tasks.size
 * [Execute tasks parallely](#execute-tasks-parallely)
 * [Asynchronous operations](#asynchronous-operations)
 * [Extend zones](#extend-zones)
-* [Override run()](#override-run)
+* [Execution ambient](#execution-ambient)
 * [Run untrusted code asynchronously](#run-untrusted-code-asynchronously)
 
 ### Instantiate a zone and listen for events
@@ -67,7 +67,7 @@ function application () {
   setTimeout(() => null, 1000)
 }
 
-zone.run(application)
+zone.run(application) // Prints "Zone has terminated" after one second
 ```
 
 ### Asynchronous operations
@@ -114,7 +114,7 @@ try {
 
   console.log('All tasks have concluded successfully')
 } catch (error) {
-  console.log('One zone errored:', error.zone.name)
+  console.log('One zone errored:', error)
 
   // Cancel all remaining zones
   zone.cancel()
@@ -123,7 +123,7 @@ try {
 
 ### Extend zones
 
-Add custom properties to `Zone.current` by inheritance.
+Add custom properties to `zone` by inheritance.
 
 ```javascript
 class CustomEnvironment extends Zone {
@@ -135,8 +135,8 @@ class CustomEnvironment extends Zone {
 }
 
 function routine () {
-  if (Zone.current instanceof CustomEnvironment) {
-    console.log('My environment was created at ' + this.created)
+  if (global.zone instanceof CustomEnvironment) {
+    console.log('My environment was created at ' + global.zone.created)
   } else {
     console.log("I think I've been running forever")
   }
@@ -147,22 +147,20 @@ global.zone.run(routine) // "I think I've been running forever"
 new CustomEnvironment().run(routine) // Prints the creation date
 ```
 
-### Override run()
+### Execution ambient
 
-You can hook into zone operations overriding `run()`.
+You can hook into `run` operations by overriding `zone.enter()` and `zone.exit()`. You might also override `zone.run()` directly, however, this would loose the context on `async` functions.
 
 ```javascript
 class MozillaZone extends Zone {
-  run (func) {
-    let previousDomain = global.domain
+  enter () {
+    zone.currentGlobalDomain = global.domain
+    global.domain = 'mozilla.org'
+  }
 
-    try {
-      global.domain = 'mozilla.org' // Switch global domain during run()
-
-      return super.run(func)
-    } finally {
-      global.domain = previousDomain // Restore global domain
-    }
+  exit () {
+    global.domain = zone.currentGlobalDomain
+    delete zone.currentGlobalDomain
   }
 }
 
@@ -209,24 +207,24 @@ try {
 ## API
 
 ```typescript
-zone: Zone // Gets the current zone
+zone: Zone // Get the current zone
 
 interface Task extends Event {
   cancel?: Function
 }
 
 interface Zone extends EventTarget, Node {
-  name: string
-  root: Zone
-  onerror?: Function
-  onfinish?: Function
+  onerror?: Function // Set 'error' event handler
+  onfinish?: Function // Set 'finish' event handler
 
-  readonly tasks: Map<any, Task>
-  readonly children: Zone[]
-  readonly root: Zone
+  readonly name: any // Optional name, e.g., for debugging
+  readonly tasks: Map<any, Task> // Pending tasks
+  readonly children: Zone[] // Associated children, modifiable by the DOM
+  readonly root: Zone // Root zone - all error events bubble towards this zone
 
   constructor (nameOrSpec?: any)
 
+  // Add and manage custom tasks
   addTask (task: Task): number
   setTask (id: any, task: Task): this
   getTask (id: any): Task
@@ -234,17 +232,22 @@ interface Zone extends EventTarget, Node {
   removeTask (id: any): boolean
   cancelTask (id: any): Promise<void>
 
+  // Run function inside zone
   run (entry: Function, thisArg?: any, ...args: any[]): any
+  // Bind function to zone
   bind (fn: Function): Function
-  // Cancels all tasks and child zones by default
+  // Cancels all child zones and pending tasks
   cancel (): Promise<void> 
   // Spawns a new child zone, runs `entry` in it and resolves when all new tasks have been worked off
   exec (entry: Function, thisArg?: any, ...args: any[]): Promise<any>
 
+  // Add event listeners
   addEventListener (type: 'finish' | 'error', listener: Function, options: any): void
+  // Modify the DOM - affects which children will be cancelled on `cancel()` and where 'error' events will bubble to
   appendChild (node: Zone): this
 }
 
+// Zone-enabled standard API
 function setTimeout (handler, timeout, ...args)
 function setInterval (handler, timeout, ...args)
 function clearTimeout (id)

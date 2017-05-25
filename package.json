@@ -1,16 +1,17 @@
 {
   "name": "@checle/zones",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Simplistic, promise-based zones",
   "main": "dist/main.js",
   "browser": "dist/browser.js",
   "typings": "api.d.ts",
   "scripts": {
     "prepublish": "npm run dist",
+    "clean": "rm -rf dist",
     "lint": "eslint src/**/*.js",
     "build": "babel src -D -d dist",
     "watch": "babel src -Dw -d dist",
-    "dist": "npm run build"
+    "dist": "npm run clean && npm run build"
   },
   "repository": {
     "type": "git",

@@ -13,7 +13,7 @@ interface Task extends Event {
 }
 
 interface Zone extends EventTarget, Node {
-  name: string
+  readonly name: string
   onerror?: Function
   onfinish?: Function
 

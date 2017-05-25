@@ -150,10 +150,26 @@ export class Zone extends Node {
     }
   }
 
+  enter (zone) {
+    let lastZone = global.zone
+
+    global.zone = zone
+
+    return lastZone
+  }
+
   run (entry, thisArg = undefined, ...args) {
     let lastZone
-    let enter = () => (lastZone = zone, zone = this)
-    let exit = () => (zone = lastZone)
+
+    let enter = () => {
+      lastZone = global.zone
+
+      this.enter(this)
+    }
+
+    let exit = () => {
+      if (lastZone) this.enter(lastZone)
+    }
 
     try {
       enter()
@@ -172,7 +188,7 @@ export class Zone extends Node {
 
   exec (entry, thisArg = undefined, ...args) {
     return new Promise((resolve, reject) => {
-      let child = zone.appendChild(new Zone(entry.name))
+      let child = this.appendChild(new Zone(entry.name))
       let promise = child.run(...arguments)
 
       if (!child.tasks.size) return resolve(promise)
@@ -184,15 +200,10 @@ export class Zone extends Node {
 }
 
 Object.assign(Zone.prototype, {
-  onfinish: null
+  onfinish: null,
+  onerror: null,
 })
 
 export default Zone
 
-let zone = new Zone()
-
-Object.defineProperty(typeof global === 'undefined' ? self : global, 'zone', {
-  get () {
-    return zone
-  }
-})
+global.zone = new Zone()
