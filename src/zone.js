@@ -150,25 +150,21 @@ export class Zone extends Node {
     }
   }
 
-  enter (zone) {
-    let lastZone = global.zone
-
-    global.zone = zone
-
-    return lastZone
-  }
-
   run (entry, thisArg = undefined, ...args) {
     let lastZone
 
     let enter = () => {
       lastZone = global.zone
 
-      this.enter(this)
+      if (typeof this.onenter === 'function') this.onenter()
+
+      global.zone = this
     }
 
     let exit = () => {
-      if (lastZone) this.enter(lastZone)
+      global.zone = lastZone
+
+      if (typeof this.onexit === 'function') this.onexit()
     }
 
     try {
@@ -202,6 +198,8 @@ export class Zone extends Node {
 Object.assign(Zone.prototype, {
   onfinish: null,
   onerror: null,
+  onenter: null,
+  onexit: null,
 })
 
 export default Zone

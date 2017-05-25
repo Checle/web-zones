@@ -50,7 +50,7 @@ state = zone.tasks.size > 0 ? 'active' : 'inactive'
 * [Execute tasks parallely](#execute-tasks-parallely)
 * [Asynchronous operations](#asynchronous-operations)
 * [Extend zones](#extend-zones)
-* [Execution ambient](#execution-ambient)
+* [Execution contexts](#execution-contexts)
 * [Run untrusted code asynchronously](#run-untrusted-code-asynchronously)
 
 ### Instantiate a zone and listen for events
@@ -147,18 +147,18 @@ global.zone.run(routine) // "I think I've been running forever"
 new CustomEnvironment().run(routine) // Prints the creation date
 ```
 
-### Execution ambient
+### Execution contexts
 
-You can hook into `run` operations by overriding `zone.enter()` and `zone.exit()`. You might also override `zone.run()` directly, however, this would loose the context on `async` functions.
+You can hook into `run` operations by setting `onenter` and `onexit` handlers. You might also override `zone.run()`, however, this would loose the context on `async` functions.
 
 ```javascript
 class MozillaZone extends Zone {
-  enter () {
+  onenter () {
     zone.currentGlobalDomain = global.domain
     global.domain = 'mozilla.org'
   }
 
-  exit () {
+  onexit () {
     global.domain = zone.currentGlobalDomain
     delete zone.currentGlobalDomain
   }
@@ -216,6 +216,8 @@ interface Task extends Event {
 interface Zone extends EventTarget, Node {
   onerror?: Function // Set 'error' event handler
   onfinish?: Function // Set 'finish' event handler
+  onenter?: Function // Enter handler
+  onexit?: Function // Exit handler
 
   readonly name: any // Optional name, e.g., for debugging
   readonly tasks: Map<any, Task> // Pending tasks
