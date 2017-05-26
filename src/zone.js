@@ -167,7 +167,7 @@ export class Zone extends Node {
       currentOperation = new Promise (r => (resolve = r))
 
       this.enter()
-      setTimeout(() => (this.leave(), resolve()), 0)
+      setTimeout(() => (this.leave(), resolve()), 100)
 
       return entry.apply(this, args)
     } catch (error) {
@@ -219,4 +219,4 @@ export default Zone
 
 currentZone = new Zone()
 
-Object.defineProperty(global, 'zone', {get: () => currentZone})
+Object.defineProperty(global, 'zone', {get: () => currentZone, enumerable: true})

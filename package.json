@@ -1,6 +1,6 @@
 {
   "name": "web-zones",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Simplistic, promise-based zones",
   "main": "dist/main.js",
   "browser": "dist/browser.js",
