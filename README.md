@@ -16,13 +16,15 @@ Import zones:
 
 ```javascript
 
-import * as zones from 'web-zones'
-
-Object.assign(global, zones) // Optionally, shim the host API (overrides setTimeout, Promise etc.)
+import {Zone} from 'web-zones'
 ```
 
 ## Usage
 
+Current zone
+```javascript
+global.zone
+```
 Wait for operations spawned by a function
 ```javascript
 await zone.exec(initAppFunction)
@@ -43,9 +45,9 @@ Activity state
 ```javascript
 zone.tasks.size > 0 ? 'active' : 'inactive'
 ```
-Terminate script
+Terminate the whole script
 ```javascript
-zone.root.cancel()
+zone.rootZone.cancel()
 ```
 
 ## Examples
@@ -227,7 +229,7 @@ interface Zone extends Node {
   readonly name: any // Optional name, e.g., for debugging
   readonly tasks: Map<any, Task> // Pending tasks
   readonly children: Zone[] // Associated children, modifiable by the DOM
-  readonly root: Zone // Root zone - all error events bubble towards this zone
+  readonly rootZone: Zone // Root zone - all error events bubble towards this zone
 
   constructor (nameOrSpec?: any)
 

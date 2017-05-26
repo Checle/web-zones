@@ -21,7 +21,7 @@ interface Zone extends EventTarget, Node {
   readonly name: string
   readonly tasks: Map<any, Task>
   readonly children: Zone[]
-  readonly root: Zone
+  readonly rootZone: Zone
 
   constructor (nameOrSpec?: any)
 

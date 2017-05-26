@@ -4,7 +4,9 @@ const LENGTH = Symbol('LENGTH')
 
 let Promise = global.Promise
 let setTimeout = global.setTimeout
+let currentZone
 let currentOperation
+let lastZones = []
 
 function dispatchEvent (zone, type, init = {}) {
   let event = new CustomEvent(type, init)
@@ -72,8 +74,8 @@ export class Zone extends Node {
     for (let node of nodes) this.appendChild(node)
   }
 
-  get root () {
-    return this.parentNode instanceof Zone ? this.parentNode.root : this
+  get rootZone () {
+    return this.parentNode instanceof Zone ? this.parentNode.rootZone : this
   }
 
   insertBefore (node, child) {
@@ -122,7 +124,7 @@ export class Zone extends Node {
   cancelTask (id) {
     let task = this.tasks.get(id)
 
-    this.tasks.delete(id)
+    this.removeTask(id)
 
     if (task != null && typeof task.cancel === 'function') {
       return task.cancel()
@@ -132,12 +134,12 @@ export class Zone extends Node {
   cancel () {
     let results = []
 
-    for (let child of this.children) {
-      results.push(child.cancel())
-    }
-
     for (let id of this.tasks.keys()) {
       results.push(this.cancelTask(id))
+    }
+
+    for (let child of this.children) {
+      results.push(child.cancel())
     }
 
     return Promise.all(results)
@@ -157,35 +159,15 @@ export class Zone extends Node {
 
   async run (entry, thisArg = undefined, ...args) {
     try {
-      if (global.zone === this) return entry.apply(this, args)
-
+      if (currentZone === this) return entry.apply(this, args)
       if (currentOperation) await currentOperation
 
       let resolve
 
       currentOperation = new Promise (r => (resolve = r))
 
-      let lastZone
-      let result
-
-      let enter = () => {
-        lastZone = global.zone
-
-        if (typeof this.onenter === 'function') this.onenter()
-
-        global.zone = this
-      }
-
-      let leave = () => {
-        global.zone = lastZone
-
-        if (typeof this.onleave === 'function') this.onleave()
-
-        resolve(result)
-      }
-
-      enter()
-      setTimeout(leave, 0)
+      this.enter()
+      setTimeout(() => (this.leave(), resolve()), 0)
 
       return entry.apply(this, args)
     } catch (error) {
@@ -193,6 +175,20 @@ export class Zone extends Node {
         console.error(error)
       }
     }
+  }
+
+  enter () {
+    lastZones.push(currentZone)
+
+    if (typeof this.onenter === 'function') this.onenter()
+
+    currentZone = this
+  }
+
+  leave () {
+    currentZone = lastZones.pop()
+
+    if (typeof this.onleave === 'function') this.onleave()
   }
 
   exec (entry, thisArg = undefined, ...args) {
@@ -221,4 +217,6 @@ Object.assign(Zone.prototype, {
 
 export default Zone
 
-global.zone = new Zone()
+currentZone = new Zone()
+
+Object.defineProperty(global, 'zone', {get: () => currentZone})
