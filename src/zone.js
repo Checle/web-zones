@@ -56,8 +56,8 @@ export class Zone extends Node {
   constructor (nameOrSpec = null) {
     super()
 
-    if (typeof spec === 'object') Object.assign(this, spec)
-    else this.name = spec
+    if (typeof nameOrSpec === 'object') Object.assign(this, nameOrSpec)
+    else this.name = nameOrSpec
 
     defineProperty(this, 'tasks', new TaskMap())
   }
@@ -131,7 +131,7 @@ export class Zone extends Node {
     }
   }
 
-  cancel () {
+  async cancel () {
     let results = []
 
     for (let id of this.tasks.keys()) {
@@ -142,7 +142,7 @@ export class Zone extends Node {
       results.push(child.cancel())
     }
 
-    return Promise.all(results)
+    await Promise.all(results)
   }
 
   bind (fn) {
@@ -157,22 +157,25 @@ export class Zone extends Node {
     return bound
   }
 
-  async run (entry, thisArg = undefined, ...args) {
+  run (entry, thisArg = undefined, ...args) {
     try {
       if (currentZone === this) return entry.apply(this, args)
-      if (currentOperation) await currentOperation
-
-      let resolve
-
-      currentOperation = new Promise (r => (resolve = r))
 
       this.enter()
-      setTimeout(() => (this.leave(), resolve()), 100)
 
-      return entry.apply(this, args)
+      try {
+        return entry.apply(this, args)
+      } finally {
+        this.leave()
+      }
     } catch (error) {
       if (dispatchEvent(this, 'error', {detail: error, bubbles: true})) {
         console.error(error)
+        this.cancel()
+      }
+    } finally {
+      if (this.tasks.size === 0) {
+        dispatchEvent(this, 'finish')
       }
     }
   }

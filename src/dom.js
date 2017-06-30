@@ -114,6 +114,7 @@ export class Node extends EventTarget {
     let index = this[CHILDREN].indexOf(child)
 
     this[CHILDREN] = this[CHILDREN].splice(index, 1)
+    node[PARENT] = null
 
     return child
   }
@@ -129,6 +130,8 @@ export class Node extends EventTarget {
     } else {
       children.push(node)
     }
+
+    node[PARENT] = this
 
     return node
   }
